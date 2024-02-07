@@ -730,6 +730,15 @@
                 >{{ __('PAY') }}</v-btn
               >
             </v-col>
+            <v-col class="pa-1">
+              <v-btn
+                block
+                class="pa-0"
+                color="error"
+                @click="quick_return"
+                dark
+              >{{ __("Quick Return") }}</v-btn>
+            </v-col>
             <v-col
               v-if="pos_profile.posa_allow_print_draft_invoices"
               cols="6"
@@ -788,6 +797,7 @@ export default {
       selcted_delivery_charges: {},
       invoice_posting_date: false,
       posting_date: frappe.datetime.nowdate(),
+      quick_return_value: false,
       items_headers: [
         {
           text: __('Name'),
@@ -1176,7 +1186,27 @@ export default {
         return this.update_invoice(doc);
       }
     },
-
+     quick_return() {
+       if (!this.customer) {
+         evntBus.$emit("show_mesage", {
+           text: __(`There is no Customer !`),
+           color: "error",
+         });
+         return;
+       }
+       if (!this.items.length) {
+         evntBus.$emit("show_mesage", {
+           text: __(`There is no Items !`),
+           color: "error",
+         });
+         return;
+       }
+       if (!this.validate()) {
+         return;
+       }
+       this.quick_return_value = !this.quick_return_value
+       evntBus.$emit("toggle_quick_return", this.quick_return_value);
+     },
     show_payment() {
       if (!this.customer) {
         evntBus.$emit('show_mesage', {

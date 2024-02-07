@@ -11,7 +11,7 @@
       :items="customers"
       item-text="customer_name"
       item-value="name"
-      background-color="white"
+      :background-color="quick_return? '#EF9A9A': 'white' "
       :no-data-text="__('Customer not found')"
       hide-details
       :filter="customFilter"
@@ -63,10 +63,11 @@ export default {
     customers: [],
     customer: '',
     readonly: false,
+    quick_return: false,
   }),
 
-  methods: {
-    get_customer_names() {
+   methods: {
+     get_customer_names() {
       const vm = this;
       if (vm.pos_profile.posa_local_storage && localStorage.customer_storage) {
         vm.customers = JSON.parse(localStorage.getItem('customer_storage'));
@@ -79,7 +80,6 @@ export default {
         callback: function (r) {
           if (r.message) {
             vm.customers = r.message;
-            console.info('loadCustomers');
             if (vm.pos_profile.posa_local_storage) {
               localStorage.setItem('customer_storage', '');
               localStorage.setItem(
@@ -121,6 +121,9 @@ export default {
 
   created: function () {
     this.$nextTick(function () {
+      evntBus.$on("toggle_quick_return", (value) => {
+        this.quick_return = value;
+      });
       evntBus.$on('register_pos_profile', (pos_profile) => {
         this.pos_profile = pos_profile;
         this.get_customer_names();

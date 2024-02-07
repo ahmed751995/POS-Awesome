@@ -698,10 +698,11 @@ export default {
     mpesa_modes: [],
     float_precision: 2,
     currency_precision: 2,
+    quick_return: false
   }),
 
-  methods: {
-    back_to_invoice() {
+   methods: {
+     back_to_invoice() {
       evntBus.$emit('show_payment', 'false');
       evntBus.$emit('set_customer_readonly', false);
     },
@@ -798,14 +799,26 @@ export default {
       evntBus.$emit('new_invoice', 'false');
       this.back_to_invoice();
     },
-    submit_invoice() {
-      let data = {};
-      data['total_change'] = -this.diff_payment;
-      data['paid_change'] = this.paid_change;
-      data['credit_change'] = -this.credit_change;
-      data['redeemed_customer_credit'] = this.redeemed_customer_credit;
-      data['customer_credit_dict'] = this.customer_credit_dict;
-      data['is_cashback'] = this.is_cashback;
+     submit_invoice() {
+       if (this.quick_return) {
+         this.invoice_doc.is_return = true;
+         let total = 0;
+         this.invoice_doc.items.forEach(item => {
+           item.qty = -1 * item.qty;
+           item.amount = -1 * item.amount
+           total += item.amount
+         })
+         this.invoice_doc.total = total;
+         this.invoice_doc.payments[0].amount = this.invoice_doc.total;
+         this.quick_return = false;
+       }
+       let data = {};
+       data['total_change'] = -this.diff_payment;
+       data['paid_change'] = this.paid_change;
+       data['credit_change'] = -this.credit_change;
+       data['redeemed_customer_credit'] = this.redeemed_customer_credit;
+       data['customer_credit_dict'] = this.customer_credit_dict;
+       data['is_cashback'] = this.is_cashback;
 
       const vm = this;
       frappe.call({
@@ -823,6 +836,7 @@ export default {
               text: `Invoice ${r.message.name} is Submited`,
               color: 'success',
             });
+            evntBus.$emit("toggle_quick_return", false);
             frappe.utils.play_sound('submit');
             this.addresses = [];
           }
@@ -1244,10 +1258,13 @@ export default {
     },
   },
 
-  created: function () {
-    this.$nextTick(function () {
-      evntBus.$on('send_invoice_doc_payment', (invoice_doc) => {
-        this.invoice_doc = invoice_doc;
+   created: function () {
+     this.$nextTick(function () {
+       evntBus.$on("toggle_quick_return", (value) => {
+         this.quick_return = value;
+       });
+       evntBus.$on('send_invoice_doc_payment', (invoice_doc) => {
+         this.invoice_doc = invoice_doc;
         const default_payment = this.invoice_doc.payments.find(
           (payment) => payment.default == 1
         );
@@ -1306,8 +1323,8 @@ export default {
     document.removeEventListener('keydown', this.shortPay);
   },
 
-  watch: {
-    loyalty_amount(value) {
+   watch: {
+     loyalty_amount(value) {
       if (value > this.available_pioints_amount) {
         this.invoice_doc.loyalty_amount = 0;
         this.invoice_doc.redeem_loyalty_points = 0;
